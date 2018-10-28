@@ -78,7 +78,7 @@ EOF
 chmod 0600 /etc/vault/vault.env
 
 # TLS key and certs
-for tls_file in ${vault_ca_cert} ${vault_tls_key} ${vault_tls_cert}; do 
+for tls_file in ${vault_ca_cert} ${vault_tls_key} ${vault_tls_cert}; do
   gcloud kms decrypt \
     --location global \
     --keyring=${kms_keyring_name} \
@@ -116,6 +116,7 @@ server {
     }
 }
 EOF
+
 systemctl enable nginx
 systemctl restart nginx
 
@@ -127,15 +128,32 @@ systemctl restart nginx
 if [[ $(vault status) =~ "Sealed: true" ]]; then
   echo "Vault already initialized"
 else
-  vault init > /tmp/vault_unseal_keys.txt
 
-  gcloud kms encrypt \
-    --location=global  \
-    --keyring=${kms_keyring_name} \
-    --key=${kms_key_name} \
-    --plaintext-file=/tmp/vault_unseal_keys.txt \
-    --ciphertext-file=/tmp/vault_unseal_keys.txt.encrypted
+  # Get keyshare gpg keys and set count
+  declare -i keyshare_count=0
+  keyfile_list=""
+  for key in ${vault_keyshare_gpg_keys}; do
+      target_key_path="/tmp/$${key}.asc"
+      get_gpg_key "$${key}"
+      export_ascii_gpg_key "$${key}" "$${target_key_path}"
+      keyfile_list+="$${target_key_path} "
+      keyshare_count+=1
+  done;
+  keyfile_list_trimmed="$(echo -e "$${keyfile_list}" | sed -e 's/[[:space:]]*$//')"
 
-  gsutil cp /tmp/vault_unseal_keys.txt.encrypted gs://${assets_bucket}
+  # Get key for which root token should be encrypted
+  root_token_key_path="/tmp/${vault_root_token_gpg_key}.asc"
+  get_gpg_key "${vault_root_token_gpg_key}"
+  export_ascii_gpg_key "${vault_root_token_gpg_key}" "$${root_token_key_path}"
+
+  # Initialize vault
+  vault init \
+    -key-shares=$${keyshare_count} \
+    -key-threshold=${vault_keyshare_threshold} \
+    -pgp-keys=$${keyfile_list_trimmed} \
+    -root-token-pgp-key=$${root_token_key_path} \
+    > /tmp/vault_unseal_keys.txt
+
+  gsutil cp /tmp/vault_unseal_keys.txt gs://${assets_bucket}
   rm -f /tmp/vault_unseal_keys.txt*
 fi

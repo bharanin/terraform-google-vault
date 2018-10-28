@@ -18,17 +18,20 @@ data "template_file" "vault-startup-script" {
   template = "${file("${format("%s/scripts/startup.sh.tpl", path.module)}")}"
 
   vars {
-    config                = "${data.template_file.vault-config.rendered}"
-    service_account_email = "${google_service_account.vault-admin.email}"
-    vault_version         = "${var.vault_version}"
-    vault_args            = "${var.vault_args}"
-    assets_bucket         = "${google_storage_bucket.vault-assets.name}"
-    kms_keyring_name      = "${var.kms_keyring_name}"
-    kms_key_name          = "${var.kms_key_name}"
-    vault_sa_key          = "${google_storage_bucket_object.vault-sa-key.name}"
-    vault_ca_cert         = "${google_storage_bucket_object.vault-ca-cert.name}"
-    vault_tls_key         = "${google_storage_bucket_object.vault-tls-key.name}"
-    vault_tls_cert        = "${google_storage_bucket_object.vault-tls-cert.name}"
+    config                   = "${data.template_file.vault-config.rendered}"
+    service_account_email    = "${google_service_account.vault-admin.email}"
+    vault_version            = "${var.vault_version}"
+    vault_args               = "${var.vault_args}"
+    assets_bucket            = "${google_storage_bucket.vault-assets.name}"
+    kms_keyring_name         = "${var.kms_keyring_name}"
+    kms_key_name             = "${var.kms_key_name}"
+    vault_sa_key             = "${google_storage_bucket_object.vault-sa-key.name}"
+    vault_ca_cert            = "${google_storage_bucket_object.vault-ca-cert.name}"
+    vault_tls_key            = "${google_storage_bucket_object.vault-tls-key.name}"
+    vault_tls_cert           = "${google_storage_bucket_object.vault-tls-cert.name}"
+    vault_keyshare_gpg_keys  = "${var.vault_keyshare_gpg_keys}"
+    vault_keyshare_threshold = "${var.vault_keyshare_threshold}"
+    vault_root_token_gpg_key = "${var.vault_root_token_gpg_key}"
   }
 }
 
@@ -111,7 +114,7 @@ resource "google_storage_bucket_object" "vault-sa-key" {
   content      = "${file(data.external.sa-key-encrypted.result["file"])}"
   content_type = "application/octet-stream"
   bucket       = "${google_storage_bucket.vault-assets.name}"
-  
+
   provisioner "local-exec" {
     when    = "destroy"
     command = "rm -f vault_sa_key.json*"
@@ -242,7 +245,7 @@ resource "google_storage_bucket_object" "vault-ca-cert" {
   content      = "${file(data.external.vault-ca-cert-encrypted.result["file"])}"
   content_type = "application/octet-stream"
   bucket       = "${google_storage_bucket.vault-assets.name}"
-  
+
   provisioner "local-exec" {
     when    = "destroy"
     command = "rm -f certs/vault-server.ca.crt.pem*"
@@ -268,7 +271,7 @@ resource "google_storage_bucket_object" "vault-tls-key" {
   content      = "${file(data.external.vault-tls-key-encrypted.result["file"])}"
   content_type = "application/octet-stream"
   bucket       = "${google_storage_bucket.vault-assets.name}"
-  
+
   provisioner "local-exec" {
     when    = "destroy"
     command = "rm -f certs/vault-server.key.pem*"
@@ -294,7 +297,7 @@ resource "google_storage_bucket_object" "vault-tls-cert" {
   content      = "${file(data.external.vault-tls-cert-encrypted.result["file"])}"
   content_type = "application/octet-stream"
   bucket       = "${google_storage_bucket.vault-assets.name}"
-  
+
   provisioner "local-exec" {
     when    = "destroy"
     command = "rm -f certs/vault-server.crt.pem*"

@@ -106,3 +106,15 @@ variable tls_ou {
   description = "The TLS Organizational Unit for the TLS certificate"
   default     = "IT Security Operations"
 }
+
+variable vault_keyshare_gpg_keys {
+  description = "Space-separate list of gpg fingerprints for which to encrypt shards"
+}
+
+variable vault_keyshare_threshold {
+  description = "How many keys are required for unseal (should be lte than total keys)"
+}
+
+variable vault_root_token_gpg_key {
+  description = "GPG key to encrypt initial root token with"
+}
