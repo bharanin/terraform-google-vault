@@ -1,11 +1,51 @@
 #!/bin/bash -xe
 
-apt-get update
-apt-get install -y unzip jq netcat nginx
+##################
+# Constants
+##################
+HASHI_GPGKEY="91A6E7F85D05C65630BEF18951852D87348FFC4C";
+GPG_KEY_SERVERS="hkp://p80.pool.sks-keyservers.net:80 hkp://keyserver.ubuntu.com:80 hkp://pgp.mit.edu:80"
 
-# Download and install Vault
+##################
+# Functions
+##################
+
+# Retrieve and import requested key into gpg
+# 1: Requested key fingerprint
+get_gpg_key() {
+  local gpgkey=$$1;
+  local found='';
+  for server in $${GPG_KEY_SERVERS}; do
+      echo "Fetching GPG key $${gpgkey} from $${server}";
+      gpg --keyserver "$${server}" --recv-keys "$${gpgkey}" && found=yes && break;
+  done;
+  test -z "$${found}" && echo >&2 "error: failed to fetch GPG key $${gpgkey}" && return 1;
+  return 0;
+}
+
+# Export ascii-armored gpg key
+# $1: key fingerprint to export
+# $2: path to export key
+export_ascii_gpg_key() {
+  local gpgkey=$1
+  local keypath=$2
+  echo "Exporting key $${gpgkey} to $${keypath}"
+  gpg --armor --export "$${gpgkey}" > "$${keypath}" && return 0;
+  return 1;
+}
+
+apt-get update
+apt-get install -y unzip jq netcat nginx gnupg ca-certificates openssl dirmngr
+
+# Download vault, verify signature, install
+get_gpg_key "$${HASHI_GPGKEY}"
+
 cd /tmp && \
   curl -sLO https://releases.hashicorp.com/vault/${vault_version}/vault_${vault_version}_linux_amd64.zip && \
+  curl -sLO https://releases.hashicorp.com/vault/${vault_version}/vault_${vault_version}_SHA256SUMS && \
+  curl -sLO https://releases.hashicorp.com/vault/${vault_version}/vault_${vault_version}_SHA256SUMS.sig && \
+  gpg --batch --verify vault_${vault_version}_SHA256SUMS.sig vault_${vault_version}_SHA256SUMS && \
+  grep vault_${vault_version}_linux_amd64.zip vault_${vault_version}_SHA256SUMS | sha256sum -c && \
   unzip vault_${vault_version}_linux_amd64.zip && \
   mv vault /usr/local/bin/vault && \
   rm vault_${vault_version}_linux_amd64.zip
