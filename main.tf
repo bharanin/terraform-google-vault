@@ -54,11 +54,7 @@ module "vault-server" {
   service_account_email = "${google_service_account.vault-admin.email}"
 
   service_account_scopes = [
-    "https://www.googleapis.com/auth/compute",
-    "https://www.googleapis.com/auth/logging.write",
     "https://www.googleapis.com/auth/cloud-platform",
-    "https://www.googleapis.com/auth/monitoring.write",
-    "https://www.googleapis.com/auth/devstorage.full_control",
   ]
 
   size              = 1
