@@ -25,7 +25,6 @@ data "template_file" "vault-startup-script" {
     assets_bucket            = "${google_storage_bucket.vault-assets.name}"
     kms_keyring_name         = "${var.kms_keyring_name}"
     kms_key_name             = "${var.kms_key_name}"
-    vault_sa_key             = "${google_storage_bucket_object.vault-sa-key.name}"
     vault_ca_cert            = "${google_storage_bucket_object.vault-ca-cert.name}"
     vault_tls_key            = "${google_storage_bucket_object.vault-tls-key.name}"
     vault_tls_cert           = "${google_storage_bucket_object.vault-tls-cert.name}"
@@ -89,39 +88,6 @@ resource "google_service_account" "vault-admin" {
   display_name = "Vault Admin"
 }
 
-resource "google_service_account_key" "vault-admin" {
-  service_account_id = "${google_service_account.vault-admin.id}"
-  public_key_type = "TYPE_X509_PEM_FILE"
-  private_key_type = "TYPE_GOOGLE_CREDENTIALS_FILE"
-}
-
-// Encrypt the SA key with KMS.
-data "external" "sa-key-encrypted" {
-  program = ["${path.module}/encrypt_file.sh"]
-
-  query = {
-    dest    = "vault_sa_key.json.encrypted.base64"
-    data    = "${google_service_account_key.vault-admin.private_key}"
-    keyring = "${var.kms_keyring_name}"
-    key     = "${var.kms_key_name}"
-    b64in   = "true"
-  }
-}
-
-// Upload the service account key to the assets bucket.
-resource "google_storage_bucket_object" "vault-sa-key" {
-  name         = "vault_sa_key.json.encrypted.base64"
-  content      = "${file(data.external.sa-key-encrypted.result["file"])}"
-  content_type = "application/octet-stream"
-  bucket       = "${google_storage_bucket.vault-assets.name}"
-
-  provisioner "local-exec" {
-    when    = "destroy"
-    command = "rm -f vault_sa_key.json*"
-    interpreter = ["sh", "-c"]
-  }
-}
-
 resource "google_project_iam_policy" "vault" {
   project     = "${var.project_id}"
   policy_data = "${data.google_iam_policy.vault.policy_data}"
@@ -130,22 +96,6 @@ resource "google_project_iam_policy" "vault" {
 data "google_iam_policy" "vault" {
   binding {
     role = "roles/storage.admin"
-
-    members = [
-      "serviceAccount:${google_service_account.vault-admin.email}",
-    ]
-  }
-
-  binding {
-    role = "roles/iam.serviceAccountActor"
-
-    members = [
-      "serviceAccount:${google_service_account.vault-admin.email}",
-    ]
-  }
-
-  binding {
-    role = "roles/iam.serviceAccountKeyAdmin"
 
     members = [
       "serviceAccount:${google_service_account.vault-admin.email}",

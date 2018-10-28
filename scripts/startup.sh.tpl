@@ -60,17 +60,6 @@ ${config}
 EOF
 chmod 0600 /etc/vault/config.hcl
 
-# Service account key JSON credentials encrypted in GCS.
-if [[ ! -f /etc/vault/gcp_credentials.json ]]; then
-  gcloud kms decrypt \
-    --location global \
-    --keyring=${kms_keyring_name} \
-    --key=${kms_key_name} \
-    --plaintext-file /etc/vault/gcp_credentials.json \
-    --ciphertext-file=<(gsutil cat gs://${assets_bucket}/${vault_sa_key} | base64 -d)
-  chmod 0600 /etc/vault/gcp_credentials.json
-fi
-
 # Service environment
 cat - > /etc/vault/vault.env <<EOF
 VAULT_ARGS=${vault_args}
