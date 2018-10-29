@@ -5,6 +5,8 @@ listener "tcp" {
   tls_client_ca_file = "/etc/vault/vault-server.ca.crt.pem"
 }
 
+api_addr = "https://${vault_tls_cn}:8200"
+
 storage "gcs" {
   bucket           = "${storage_bucket}"
 }

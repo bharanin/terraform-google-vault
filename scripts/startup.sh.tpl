@@ -95,6 +95,7 @@ export VAULT_ADDR=https://127.0.0.1:8200
 export VAULT_CACERT=/etc/vault/vault-server.ca.crt.pem
 export VAULT_CLIENT_CERT=/etc/vault/vault-server.crt.pem
 export VAULT_CLIENT_KEY=/etc/vault/vault-server.key.pem
+export VAULT_TLS_SERVER_NAME="${vault_tls_cn}"
 
 # Add health-check proxy, GCE doesn't support https health checks.
 cat - > /etc/nginx/sites-available/default <<EOF

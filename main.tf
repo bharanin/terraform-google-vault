@@ -28,6 +28,7 @@ data "template_file" "vault-startup-script" {
     vault_ca_cert            = "${google_storage_bucket_object.vault-ca-cert.name}"
     vault_tls_key            = "${google_storage_bucket_object.vault-tls-key.name}"
     vault_tls_cert           = "${google_storage_bucket_object.vault-tls-cert.name}"
+    vault_tls_cn             = "${var.tls_cn}"
     vault_keyshare_gpg_keys  = "${var.vault_keyshare_gpg_keys}"
     vault_keyshare_threshold = "${var.vault_keyshare_threshold}"
     vault_root_token_gpg_key = "${var.vault_root_token_gpg_key}"
@@ -39,6 +40,7 @@ data "template_file" "vault-config" {
 
   vars {
     storage_bucket = "${google_storage_bucket.vault.name}"
+    vault_tls_cn   = "${var.tls_cn}"
   }
 }
 
@@ -150,7 +152,6 @@ resource "tls_cert_request" "vault-server" {
   private_key_pem = "${tls_private_key.vault-server.private_key_pem}"
 
   dns_names    = ["${var.tls_dns_names}"]
-  ip_addresses = ["${var.tls_ips}"]
 
   subject {
     common_name         = "${var.tls_cn}"
